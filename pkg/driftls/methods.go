@@ -2,6 +2,7 @@ package driftls
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/driftsl/driftc/pkg/driftc"
 )
@@ -22,11 +23,13 @@ func (s *Server) initialize(id any) error {
 		} `json:"capabilities"`
 
 		ServerInfo struct {
-			Name string `json:"name"`
+			Name    string `json:"name"`
+			Version string `json:"version"`
 		} `json:"serverInfo"`
 	}
 
 	initializeResult.ServerInfo.Name = "driftls"
+	initializeResult.ServerInfo.Version = fmt.Sprintf("v%s (driftc v%s)", VERSION, driftc.VERSION)
 
 	initializeResult.Capabilities.TextDocumentSync = 1
 
