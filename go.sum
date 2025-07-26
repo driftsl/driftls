@@ -1,4 +1,2 @@
-github.com/driftsl/driftc v0.0.0-20250721024257-8993f69b3360 h1:eJFXJ467QYZvcvwd5R8/qysJTA0a7hwU8z5yMbMLUK4=
-github.com/driftsl/driftc v0.0.0-20250721024257-8993f69b3360/go.mod h1:rZCgiODXIt5oQS75tAspZXxNd8yldFPqkUc4FGGV5fE=
-github.com/driftsl/driftc v0.0.0-20250721130230-c5d047e8762e h1:OC3wJWCXSel81NK12M1Amu9eHTNcn2uE5ZOEEaZurUY=
-github.com/driftsl/driftc v0.0.0-20250721130230-c5d047e8762e/go.mod h1:rZCgiODXIt5oQS75tAspZXxNd8yldFPqkUc4FGGV5fE=
+github.com/driftsl/driftc v0.0.0-20250721185426-c9c093553a33 h1:lHSoK3XB7uUdmNJpHmLRUVH7LWWiZ2UdWdiD+o0U/vY=
+github.com/driftsl/driftc v0.0.0-20250721185426-c9c093553a33/go.mod h1:rZCgiODXIt5oQS75tAspZXxNd8yldFPqkUc4FGGV5fE=

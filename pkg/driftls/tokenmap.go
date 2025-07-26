@@ -19,7 +19,8 @@ var tokensArray = [...]string{
 func mapTokenType(t driftc.TokenType) int {
 	switch t {
 	// skip
-	case driftc.TokenEOF,
+	case driftc.TokenUnknown,
+		driftc.TokenEOF,
 		driftc.TokenColon,
 		driftc.TokenSemicolon,
 		driftc.TokenDot,
