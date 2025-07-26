@@ -30,7 +30,8 @@ func mapTokenType(t driftc.TokenType) int {
 		driftc.TokenOpenParen,
 		driftc.TokenCloseBrace,
 		driftc.TokenCloseBracket,
-		driftc.TokenCloseParen:
+		driftc.TokenCloseParen,
+		driftc.TokenAt:
 		return -1
 
 	// keywords
