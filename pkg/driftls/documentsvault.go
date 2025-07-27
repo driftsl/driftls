@@ -2,6 +2,8 @@ package driftls
 
 import (
 	"encoding/json"
+
+	"github.com/driftsl/driftls/pkg/lsp"
 )
 
 type DocumentsVault struct {
@@ -14,7 +16,7 @@ type DocumentParams[T any] struct {
 
 func (v *DocumentsVault) Open(rawParams json.RawMessage) error {
 	var params DocumentParams[struct {
-		TextDocumentIdentifier
+		lsp.TextDocumentIdentifier
 		Text string `json:"text"`
 	}]
 
@@ -28,7 +30,7 @@ func (v *DocumentsVault) Open(rawParams json.RawMessage) error {
 
 func (v *DocumentsVault) Change(rawParams json.RawMessage) error {
 	var params struct {
-		DocumentParams[TextDocumentIdentifier]
+		DocumentParams[lsp.TextDocumentIdentifier]
 		ContentChanges []struct {
 			Text string `json:"text"`
 		} `json:"contentChanges"`
@@ -43,7 +45,7 @@ func (v *DocumentsVault) Change(rawParams json.RawMessage) error {
 }
 
 func (v *DocumentsVault) Close(rawParams json.RawMessage) error {
-	var params DocumentParams[TextDocumentIdentifier]
+	var params DocumentParams[lsp.TextDocumentIdentifier]
 
 	if err := json.Unmarshal(rawParams, &params); err != nil {
 		return err

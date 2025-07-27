@@ -5,51 +5,71 @@ import (
 	"fmt"
 
 	"github.com/driftsl/driftc/pkg/driftc"
+	"github.com/driftsl/driftls/pkg/jsonrpc"
+	"github.com/driftsl/driftls/pkg/lsp"
 )
 
-func (s *Server) initialize(id any) error {
-	var initializeResult struct {
-		Capabilities struct {
-			TextDocumentSync int `json:"textDocumentSync"`
+func (s *Server) handleRequest(request *jsonrpc.Request[json.RawMessage]) error {
+	switch request.Method {
+	case "initialize":
+		s.initialize(request.Id)
 
-			SemanticTokensProvider struct {
-				Legend struct {
-					TokenTypes     []string `json:"tokenTypes"`
-					TokenModifiers []string `json:"tokenModifiers"`
-				} `json:"legend"`
-
-				Full bool `json:"full"`
-			} `json:"semanticTokensProvider"`
-		} `json:"capabilities"`
-
-		ServerInfo struct {
-			Name    string `json:"name"`
-			Version string `json:"version"`
-		} `json:"serverInfo"`
+	case "textDocument/didOpen":
+		if err := s.documents.Open(request.Params); err != nil {
+			return err
+		}
+	case "textDocument/didChange":
+		if err := s.documents.Change(request.Params); err != nil {
+			return err
+		}
+	case "textDocument/didClose":
+		if err := s.documents.Close(request.Params); err != nil {
+			return err
+		}
+	case "textDocument/semanticTokens/full":
+		if err := s.sendTokens(request.Id, request.Params); err != nil {
+			return err
+		}
 	}
 
-	initializeResult.ServerInfo.Name = "driftls"
-	initializeResult.ServerInfo.Version = fmt.Sprintf("v%s (driftc v%s)", VERSION, driftc.VERSION)
-
-	initializeResult.Capabilities.TextDocumentSync = 1
-
-	initializeResult.Capabilities.SemanticTokensProvider.Full = true
-	initializeResult.Capabilities.SemanticTokensProvider.Legend.TokenTypes = tokensArray[:]
-	initializeResult.Capabilities.SemanticTokensProvider.Legend.TokenModifiers = make([]string, 0)
-
-	return s.sendServerResponse(id, initializeResult)
+	return nil
 }
 
-type Diagnostic struct {
-	Range    Range  `json:"range"`
-	Severity int    `json:"severity"`
-	Code     *int   `json:"code,omitempty"`
-	Source   string `json:"source"`
-	Message  string `json:"message"`
+func parseAndHandle[T any](s *Server, params json.RawMessage, handler func(T) error) {
+	var parsedParams T
+	if err := json.Unmarshal(params, &parsedParams); err != nil {
+		return
+	}
+
+	if err := handler(parsedParams); err != nil {
+		return
+	}
+}
+
+func (s *Server) initialize(id any) error {
+	return s.sendServerResponse(id, lsp.InitializeResult{
+		Capabilities: lsp.ServerCapabilities{
+			TextDocumentSync: ptr(lsp.TextDocumentSyncKindFull),
+
+			SemanticTokensProvider: &lsp.SemanticTokensOptions{
+				Legend: lsp.SemanticTokensLegend{
+					TokenTypes:     tokensArray[:],
+					TokenModifiers: make([]string, 0),
+				},
+
+				Full: ptr(true),
+			},
+		},
+
+		ServerInfo: &lsp.ServerInfo{
+			Name:    "driftls",
+			Version: ptr(fmt.Sprintf("v%s (driftc v%s)", VERSION, driftc.VERSION)),
+		},
+	})
 }
 
 func (s *Server) sendTokens(id any, rawParams json.RawMessage) error {
-	var params DocumentParams[TextDocumentIdentifier]
+	var params DocumentParams[lsp.TextDocumentIdentifier]
 
 	if err := json.Unmarshal(rawParams, &params); err != nil {
 		return err
@@ -60,21 +80,21 @@ func (s *Server) sendTokens(id any, rawParams json.RawMessage) error {
 	tokens, errors := lexer.Tokenize([]rune(s.documents.Get(params.TextDocument.Uri)))
 
 	var notification struct {
-		TextDocumentIdentifier
-		Diagnostics []Diagnostic `json:"diagnostics"`
+		lsp.TextDocumentIdentifier
+		Diagnostics []lsp.Diagnostic `json:"diagnostics"`
 	}
 
 	notification.Uri = params.TextDocument.Uri
-	notification.Diagnostics = make([]Diagnostic, 0)
+	notification.Diagnostics = make([]lsp.Diagnostic, 0)
 
 	for _, err := range errors {
-		notification.Diagnostics = append(notification.Diagnostics, Diagnostic{
-			Range: Range{
-				Start: Position{
+		notification.Diagnostics = append(notification.Diagnostics, lsp.Diagnostic{
+			Range: lsp.Range{
+				Start: lsp.Position{
 					Line:      err.Token.Line - 1,
 					Character: err.Token.Column - 1,
 				},
-				End: Position{
+				End: lsp.Position{
 					Line:      err.Token.Line - 1,
 					Character: err.Token.Column - 1 + len(err.Token.Value),
 				},

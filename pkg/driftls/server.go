@@ -5,35 +5,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"github.com/driftsl/driftls/pkg/jsonrpc"
 )
 
 type Server struct {
-	reader *bufio.Reader
-	writer *bufio.Writer
+	rpcServer *jsonrpc.Server
 
 	alive bool
 
 	documents DocumentsVault
 }
 
-type TextDocumentIdentifier struct {
-	Uri string `json:"uri"`
-}
-
-type Range struct {
-	Start Position `json:"start"`
-	End   Position `json:"end"`
-}
-
-type Position struct {
-	Line      int `json:"line"`
-	Character int `json:"character"`
-}
-
 func NewServer(r *bufio.Reader, w *bufio.Writer) *Server {
 	return &Server{
-		reader: r,
-		writer: w,
+		rpcServer: jsonrpc.NewServer(r, w),
 
 		documents: DocumentsVault{
 			Documents: make(map[string]string),
@@ -45,38 +31,15 @@ func (s *Server) Serve() error {
 	s.alive = true
 
 	for s.alive {
-		body, err := s.nextRequest()
+		request, err := s.rpcServer.NextRequest()
 		if err != nil {
 			return err
 		}
 
-		var data JsonRpcRequest[json.RawMessage]
-		if err := json.Unmarshal(body, &data); err != nil {
+		fmt.Fprintln(os.Stderr, request.Method, request.Id)
+
+		if err := s.handleRequest(request); err != nil {
 			return err
-		}
-
-		fmt.Fprintln(os.Stderr, data.Method, data.Id)
-
-		switch data.Method {
-		case "initialize":
-			s.initialize(data.Id)
-
-		case "textDocument/didOpen":
-			if err := s.documents.Open(data.Params); err != nil {
-				return err
-			}
-		case "textDocument/didChange":
-			if err := s.documents.Change(data.Params); err != nil {
-				return err
-			}
-		case "textDocument/didClose":
-			if err := s.documents.Close(data.Params); err != nil {
-				return err
-			}
-		case "textDocument/semanticTokens/full":
-			if err := s.sendTokens(data.Id, data.Params); err != nil {
-				return err
-			}
 		}
 	}
 
@@ -88,19 +51,19 @@ func (s *Server) sendServerResponse(id any, r any) error {
 }
 
 func (s *Server) sendServerError(id any, code int, message string) error {
-	return s.sendJsonRpcResponse(id, nil, &JsonRpcError{Code: code, Message: message})
+	return s.sendJsonRpcResponse(id, nil, &jsonrpc.Error{Code: code, Message: message})
 }
 
 func (s *Server) sendNotification(method string, params any) error {
-	return s.sendJson(JsonRpcRequest[any]{
+	return s.sendJson(jsonrpc.Request[any]{
 		JsonRpc: "2.0",
 		Method:  method,
 		Params:  params,
 	})
 }
 
-func (s *Server) sendJsonRpcResponse(id any, result any, jsonRpcError *JsonRpcError) error {
-	return s.sendJson(JsonRpcResponse{
+func (s *Server) sendJsonRpcResponse(id any, result any, jsonRpcError *jsonrpc.Error) error {
+	return s.sendJson(jsonrpc.Response{
 		JsonRpc: "2.0",
 		Id:      id,
 		Result:  result,
