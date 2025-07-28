@@ -35,14 +35,19 @@ func (s *Server) handleRequest(request *jsonrpc.Request[json.RawMessage]) error 
 	return nil
 }
 
-func parseAndHandle[T any](s *Server, params json.RawMessage, handler func(T) error) {
+func parseAndHandle[T any](s *Server, request *jsonrpc.Request[json.RawMessage], handler func(T) (any, error)) {
 	var parsedParams T
-	if err := json.Unmarshal(params, &parsedParams); err != nil {
+	if err := json.Unmarshal(request.Params, &parsedParams); err != nil {
 		return
 	}
 
-	if err := handler(parsedParams); err != nil {
+	result, err := handler(parsedParams)
+	if err != nil {
 		return
+	}
+
+	if result != nil {
+		s.sendServerResponse(request.Id, result)
 	}
 }
 
@@ -69,7 +74,7 @@ func (s *Server) initialize(id any) error {
 }
 
 func (s *Server) sendTokens(id any, rawParams json.RawMessage) error {
-	var params DocumentParams[lsp.TextDocumentIdentifier]
+	var params lsp.DidCloseTextDocumentParams
 
 	if err := json.Unmarshal(rawParams, &params); err != nil {
 		return err

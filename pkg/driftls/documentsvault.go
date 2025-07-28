@@ -10,15 +10,8 @@ type DocumentsVault struct {
 	Documents map[string]string
 }
 
-type DocumentParams[T any] struct {
-	TextDocument T `json:"textDocument"`
-}
-
 func (v *DocumentsVault) Open(rawParams json.RawMessage) error {
-	var params DocumentParams[struct {
-		lsp.TextDocumentIdentifier
-		Text string `json:"text"`
-	}]
+	var params lsp.DidOpenTextDocumentParams
 
 	if err := json.Unmarshal(rawParams, &params); err != nil {
 		return err
@@ -29,12 +22,7 @@ func (v *DocumentsVault) Open(rawParams json.RawMessage) error {
 }
 
 func (v *DocumentsVault) Change(rawParams json.RawMessage) error {
-	var params struct {
-		DocumentParams[lsp.TextDocumentIdentifier]
-		ContentChanges []struct {
-			Text string `json:"text"`
-		} `json:"contentChanges"`
-	}
+	var params lsp.DidChangeTextDocumentParams
 
 	if err := json.Unmarshal(rawParams, &params); err != nil {
 		return err
@@ -45,7 +33,7 @@ func (v *DocumentsVault) Change(rawParams json.RawMessage) error {
 }
 
 func (v *DocumentsVault) Close(rawParams json.RawMessage) error {
-	var params DocumentParams[lsp.TextDocumentIdentifier]
+	var params lsp.DidCloseTextDocumentParams
 
 	if err := json.Unmarshal(rawParams, &params); err != nil {
 		return err
