@@ -101,5 +101,6 @@ func mapTokenType(t driftc.TokenType) int {
 		driftc.TokenLogicalAndAssign:
 		return 6
 	}
+
 	panic(fmt.Sprintf("unexpected driftc.TokenType: %#v", t))
 }

@@ -98,15 +98,15 @@ func (s *Server) Serve() error {
 	return nil
 }
 
-func (s *Server) sendServerResponse(id any, r any) error {
-	return s.sendJsonRpcResponse(id, r, nil)
+func (s *Server) sendRpcResponse(id any, r any) error {
+	return s.sendRpc(id, r, nil)
 }
 
-func (s *Server) sendServerError(id any, code int, message string) error {
-	return s.sendJsonRpcResponse(id, nil, &jsonrpc.Error{Code: code, Message: message})
+func (s *Server) sendRpcError(id any, code int, message string) error {
+	return s.sendRpc(id, nil, &jsonrpc.Error{Code: code, Message: message})
 }
 
-func (s *Server) sendNotification(method string, params any) error {
+func (s *Server) sendRpcNotification(method string, params any) error {
 	return s.sendJson(jsonrpc.Request[any]{
 		JsonRpc: "2.0",
 		Method:  method,
@@ -114,7 +114,7 @@ func (s *Server) sendNotification(method string, params any) error {
 	})
 }
 
-func (s *Server) sendJsonRpcResponse(id any, result any, jsonRpcError *jsonrpc.Error) error {
+func (s *Server) sendRpc(id any, result any, jsonRpcError *jsonrpc.Error) error {
 	return s.sendJson(jsonrpc.Response{
 		JsonRpc: "2.0",
 		Id:      id,

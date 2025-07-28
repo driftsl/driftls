@@ -1,5 +1,7 @@
 package lsp
 
+// https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/
+
 // general
 
 type Range struct {
@@ -78,6 +80,10 @@ type DidCloseTextDocumentParams documentParams[TextDocumentIdentifier]
 
 type SemanticTokensParams DidCloseTextDocumentParams
 
+type SemanticTokens struct {
+	Data []uint `json:"data"`
+}
+
 // diagnostics
 
 type Diagnostic struct {
@@ -86,4 +92,10 @@ type Diagnostic struct {
 	Code     *int   `json:"code,omitempty"`
 	Source   string `json:"source"`
 	Message  string `json:"message"`
+}
+
+type PublishDiagnosticsParams struct {
+	Uri string `json:"uri"`
+
+	Diagnostics []Diagnostic `json:"diagnostics"`
 }

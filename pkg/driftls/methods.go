@@ -12,47 +12,42 @@ import (
 func (s *Server) handleRequest(request *jsonrpc.Request[json.RawMessage]) error {
 	switch request.Method {
 	case "initialize":
-		s.initialize(request.Id)
+		return s.initialize(request.Id)
 
 	case "textDocument/didOpen":
-		if err := s.documents.Open(request.Params); err != nil {
-			return err
+		if ok, params := tryParse[lsp.DidOpenTextDocumentParams](s, request); ok {
+			return s.documents.Open(params)
 		}
 	case "textDocument/didChange":
-		if err := s.documents.Change(request.Params); err != nil {
-			return err
+		if ok, params := tryParse[lsp.DidChangeTextDocumentParams](s, request); ok {
+			return s.documents.Change(params)
 		}
 	case "textDocument/didClose":
-		if err := s.documents.Close(request.Params); err != nil {
-			return err
+		if ok, params := tryParse[lsp.DidCloseTextDocumentParams](s, request); ok {
+			return s.documents.Close(params)
 		}
+
 	case "textDocument/semanticTokens/full":
-		if err := s.sendTokens(request.Id, request.Params); err != nil {
-			return err
+		if ok, params := tryParse[lsp.SemanticTokensParams](s, request); ok {
+			return s.sendTokens(request.Id, params)
 		}
 	}
 
 	return nil
 }
 
-func parseAndHandle[T any](s *Server, request *jsonrpc.Request[json.RawMessage], handler func(T) (any, error)) {
-	var parsedParams T
-	if err := json.Unmarshal(request.Params, &parsedParams); err != nil {
-		return
+func tryParse[T any](s *Server, request *jsonrpc.Request[json.RawMessage]) (bool, *T) {
+	var params T
+	if err := json.Unmarshal(request.Params, &params); err != nil {
+		s.sendRpcError(request.Id, jsonrpc.CodeInvalidParams, err.Error())
+		return false, &params
 	}
 
-	result, err := handler(parsedParams)
-	if err != nil {
-		return
-	}
-
-	if result != nil {
-		s.sendServerResponse(request.Id, result)
-	}
+	return true, &params
 }
 
 func (s *Server) initialize(id any) error {
-	return s.sendServerResponse(id, lsp.InitializeResult{
+	return s.sendRpcResponse(id, lsp.InitializeResult{
 		Capabilities: lsp.ServerCapabilities{
 			TextDocumentSync: ptr(lsp.TextDocumentSyncKindFull),
 
@@ -73,24 +68,15 @@ func (s *Server) initialize(id any) error {
 	})
 }
 
-func (s *Server) sendTokens(id any, rawParams json.RawMessage) error {
-	var params lsp.DidCloseTextDocumentParams
-
-	if err := json.Unmarshal(rawParams, &params); err != nil {
-		return err
-	}
-
+func (s *Server) sendTokens(id any, params *lsp.SemanticTokensParams) error {
 	lexer := driftc.Lexer{ParseAllErrors: true, ParseComments: true}
 
 	tokens, errors := lexer.Tokenize([]rune(s.documents.Get(params.TextDocument.Uri)))
 
-	var notification struct {
-		lsp.TextDocumentIdentifier
-		Diagnostics []lsp.Diagnostic `json:"diagnostics"`
+	notification := lsp.PublishDiagnosticsParams{
+		Uri:         params.TextDocument.Uri,
+		Diagnostics: make([]lsp.Diagnostic, 0),
 	}
-
-	notification.Uri = params.TextDocument.Uri
-	notification.Diagnostics = make([]lsp.Diagnostic, 0)
 
 	for _, err := range errors {
 		notification.Diagnostics = append(notification.Diagnostics, lsp.Diagnostic{
@@ -110,11 +96,9 @@ func (s *Server) sendTokens(id any, rawParams json.RawMessage) error {
 		})
 	}
 
-	s.sendNotification("textDocument/publishDiagnostics", notification)
+	s.sendRpcNotification("textDocument/publishDiagnostics", notification)
 
-	var result struct {
-		Data []uint `json:"data"`
-	}
+	var result lsp.SemanticTokens
 
 	result.Data = make([]uint, 0, len(tokens)*5)
 
@@ -130,13 +114,13 @@ func (s *Server) sendTokens(id any, rawParams json.RawMessage) error {
 		line := tok.Line - 1
 		column := tok.Column - 1
 
-		deltaLine := line
-		if prevLine != -1 { // absoulute, if first token
+		deltaLine := line // absoulute, if first token
+		if prevLine != -1 {
 			deltaLine -= prevLine
 		}
 
-		deltaStart := column
-		if prevLine == line { // delta, if on another line
+		deltaStart := column // absoulute, if on another line
+		if prevLine == line {
 			deltaStart -= prevColumn
 		}
 
@@ -153,5 +137,5 @@ func (s *Server) sendTokens(id any, rawParams json.RawMessage) error {
 		prevLine, prevColumn = line, column
 	}
 
-	return s.sendServerResponse(id, result)
+	return s.sendRpcResponse(id, result)
 }
