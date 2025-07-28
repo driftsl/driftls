@@ -98,9 +98,9 @@ func (s *Server) sendTokens(id any, params *lsp.SemanticTokensParams) error {
 
 	s.sendRpcNotification("textDocument/publishDiagnostics", notification)
 
-	var result lsp.SemanticTokens
-
-	result.Data = make([]uint, 0, len(tokens)*5)
+	result := lsp.SemanticTokens{
+		Data: make([]uint, 0),
+	}
 
 	prevLine := -1
 	prevColumn := 0

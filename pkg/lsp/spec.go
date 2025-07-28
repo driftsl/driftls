@@ -55,30 +55,32 @@ type TextDocumentIdentifier struct {
 }
 
 type TextDocumentItem struct {
-	TextDocumentIdentifier
+	Uri  string `json:"uri"`
 	Text string `json:"text"`
 }
 
-type documentParams[T any] struct {
-	TextDocument T `json:"textDocument"`
+type DidOpenTextDocumentParams struct {
+	TextDocument TextDocumentItem `json:"textDocument"`
 }
-
-type DidOpenTextDocumentParams documentParams[TextDocumentItem]
 
 type TextDocumentContentChangeEvent struct {
 	Text string `json:"text"`
 }
 type DidChangeTextDocumentParams struct {
-	documentParams[TextDocumentIdentifier]
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
 
 	ContentChanges []TextDocumentContentChangeEvent `json:"contentChanges"`
 }
 
-type DidCloseTextDocumentParams documentParams[TextDocumentIdentifier]
+type DidCloseTextDocumentParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+}
 
 // tokens
 
-type SemanticTokensParams DidCloseTextDocumentParams
+type SemanticTokensParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+}
 
 type SemanticTokens struct {
 	Data []uint `json:"data"`
