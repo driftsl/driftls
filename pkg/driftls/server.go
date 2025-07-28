@@ -4,13 +4,17 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/driftsl/driftls/pkg/jsonrpc"
 )
 
 type Server struct {
-	rpcServer *jsonrpc.Server
+	reader *bufio.Reader
+	writer *bufio.Writer
 
 	alive bool
 
@@ -19,7 +23,8 @@ type Server struct {
 
 func NewServer(r *bufio.Reader, w *bufio.Writer) *Server {
 	return &Server{
-		rpcServer: jsonrpc.NewServer(r, w),
+		reader: r,
+		writer: w,
 
 		documents: DocumentsVault{
 			Documents: make(map[string]string),
@@ -27,11 +32,58 @@ func NewServer(r *bufio.Reader, w *bufio.Writer) *Server {
 	}
 }
 
+func (s *Server) nextRequest() (*jsonrpc.Request[json.RawMessage], error) {
+	var contentLength int
+
+	for {
+		line, err := s.reader.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
+
+		// trim '\n' or '\r\n'
+		length := len(line)
+		if length >= 2 && line[length-2] == '\r' {
+			line = line[:length-2]
+		} else {
+			line = line[:length-1]
+		}
+
+		if line == "" {
+			break
+		}
+
+		headerParts := strings.SplitN(line, ": ", 2)
+
+		switch strings.ToLower(headerParts[0]) {
+		case "content-length":
+			contentLength, err = strconv.Atoi(headerParts[1])
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	buf := make([]byte, contentLength)
+	_, err := io.ReadFull(s.reader, buf)
+	if err != nil {
+		return nil, err
+	}
+
+	var result jsonrpc.Request[json.RawMessage]
+
+	if err := json.Unmarshal(buf, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
 func (s *Server) Serve() error {
 	s.alive = true
 
 	for s.alive {
-		request, err := s.rpcServer.NextRequest()
+		request, err := s.nextRequest()
 		if err != nil {
 			return err
 		}
