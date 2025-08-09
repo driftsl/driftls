@@ -42,7 +42,13 @@ func mapTokenType(t driftc.TokenType) int {
 		driftc.TokenExport,
 		driftc.TokenFrom,
 		driftc.TokenVertex,
-		driftc.TokenFragment:
+		driftc.TokenFragment,
+		driftc.TokenIf,
+		driftc.TokenElse,
+		driftc.TokenFor,
+		driftc.TokenWhile,
+		driftc.TokenDo,
+		driftc.TokenUniform:
 		return 0
 
 	// types
